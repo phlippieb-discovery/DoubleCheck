@@ -19,41 +19,11 @@ struct ContentView: View {
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView(appState: appState)
+        ContentView(appState: .demo)
         
-        ContentView(appState: appState)
+        ContentView(appState: .demo)
             .environment(\.colorScheme, .dark)
     }
-    
-    private static var appState: AppState = {
-        let appState = AppState()
-        appState.tasks = [
-            .init(
-                name: "Shopping 3 Jan",
-                items: [
-                    .init(text: "Milk"),
-                    .init(text: "Bread"),
-                    .init(text: "Eggs"),
-                ]
-            )
-        ]
-        appState.blueprints = [
-            .init(
-                name: "Groceries",
-                items: [
-                    .init(text: "Milk"),
-                    .init(text: "Bread"),
-                    .init(text: "Eggs"),
-                ]
-            ),
-            .init(
-                name: "Short trip",
-                items: [
-                    .init(text: "Shirts")
-                ])
-        ]
-        return appState
-    }()
 }
 
 
@@ -80,10 +50,23 @@ final class AppState: ObservableObject {
         }
     }
     
-    // TODO - only show "active" tasks (that were recently created or interacted with); show "view archived tasks" button and have a list of all tasks
     @Published var tasks: [TaskList] = []
     @Published var blueprints: [BlueprintList] = []
     @Published var creatingBlueprint: BlueprintList?
+    
+    /// Only the 5 most recent tasks that were updated within the last day
+    var recentTasks: [TaskList] {
+        self.tasks
+            .filter { !$0.isArchived && $0.lastUpdated.timeIntervalSinceNow < 86400 } // 24H
+            .sorted(by: { $0.lastUpdated > $1.lastUpdated })
+            .prefix(5)
+            .map { $0 }
+    }
+    
+    /// True if there are more tasks to be viewed than the current recent tasks.
+    var hasArchivedTasks: Bool {
+        self.recentTasks.count != self.tasks.count
+    }
     
     func startTask(from blueprint: BlueprintList) {
         let newTask = TaskList(
@@ -157,6 +140,8 @@ struct TaskList: Identifiable {
     let id = UUID()
     var name: String
     var items: [TaskItem]
+    var lastUpdated = Date()
+    var isArchived = false
     
     // Convenience:
     var dueItems: [TaskItem] {
@@ -190,10 +175,27 @@ extension AppState {
     static let demo: AppState = {
         let result = AppState()
         
+        var olderTask = TaskList(name: "Groceries 2019", items: [
+            .init(text: "Milk")
+        ])
+        olderTask.lastUpdated = Date().addingTimeInterval(-90000) // more than 24H
         result.tasks = [
-            .init(name: "Groceries 5 Jan", items: [
+            olderTask,
+            .init(name: "Groceries 2 Jan", items: [
                 .init(text: "Milk"),
                 .init(text: "Bread"),
+            ]),
+            .init(name: "Beach trip", items: [
+                .init(text: "Trunks etc")
+            ]),
+            .init(name: "Drinks", items: [
+                .init(text: "Beer")
+            ]),
+            .init(name: "Hardware", items: [
+                .init(text: "Nails")
+            ]),
+            .init(name: "Party supplies", items: [
+                .init(text: "Balloons")
             ])
         ]
         
@@ -201,6 +203,10 @@ extension AppState {
             .init(name: "Groceries", items: [
                 .init(text: "Milk"),
                 .init(text: "Bread"),
+            ]),
+            .init(name: "Short trip", items: [
+                .init(text: "Toothbrush"),
+                .init(text: "Shirts"),
             ])
         ]
         
@@ -222,13 +228,13 @@ extension HomeView: View {
             // "Tasks" section
             Section(
                 content: {
-                    if appState.tasks.isEmpty {
+                    if appState.recentTasks.isEmpty {
                         Text("No tasks are currently active")
                             .font(.footnote)
                             .italic()
                             .opacity(0.5)
                     } else {
-                        ForEach(appState.tasks) { list in
+                        ForEach(appState.recentTasks) { list in
                             HStack {
                                 Image(systemName: "checklist")
                                     .foregroundColor(.yellow)
@@ -260,7 +266,14 @@ extension HomeView: View {
                         }
                     }
                 }, footer: {
-                    Text("Tasks are once-off checklists. Use these when you go shopping or pack for a trip.")
+                    VStack(alignment: .leading) {
+                        Text("Tasks are once-off checklists. Use these when you go shopping or pack for a trip.")
+                        if appState.hasArchivedTasks {
+                            Button("View all tasks") {
+                                // TODO
+                            }.padding(1)
+                        }
+                    }
                 })
             
             // "Blueprints" section
