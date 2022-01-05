@@ -113,7 +113,6 @@ final class AppState: ObservableObject {
         }
     }
     private var viewingBlueprintId: UUID?
-    @Published var blueprintItems: [BlueprintItem] = []
     @Published var isAddingBlueprintItem = false
     @Published var addingBlueprintItemText = ""
     @Published var isBlueprintValid = false
@@ -125,7 +124,6 @@ final class AppState: ObservableObject {
     
     func clearBlueprintState() {
         viewingBlueprint = nil
-        blueprintItems = []
         isAddingBlueprintItem = false
         addingBlueprintItemText = ""
     }
@@ -254,7 +252,6 @@ extension HomeView: View {
                             }
                             .onTapGesture {
                                 appState.viewingBlueprint = list
-                                appState.blueprintItems = list.items
                             }
                         }
                     }
@@ -428,17 +425,17 @@ struct CreateBlueprintView: View {
     
     var body: some View {
         NavigationView {
-            BlueprintView(appState: appState)
-                .navigationTitle("New Blueprint")
-                .navigationBarTitleDisplayMode(.inline)
-                .navigationBarItems(
-                    trailing: Button("Save") {
-                        appState.blueprints.append(.init(
-                            name: appState.viewingBlueprint?.name ?? "",
-                            items: appState.blueprintItems))
-                        dismiss()
-                    }.disabled(!appState.isBlueprintValid)
-                )
+            IfLet($appState.viewingBlueprint) { $blueprint in
+                BlueprintView(appState: appState)
+                    .navigationTitle("New Blueprint")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .navigationBarItems(
+                        trailing: Button("Save") {
+                            // TODO might need a scratch var for adding blueprint?
+                            appState.blueprints.append(blueprint)
+                            dismiss()
+                        }.disabled(!appState.isBlueprintValid))
+            }
         }
     }
 }
@@ -478,16 +475,16 @@ extension BlueprintView: View {
                 List {
                     Section.init(
                         content: {
-                            ForEach(appState.blueprintItems.indices, id: \.self) { index in
+                            ForEach($blueprint.items.indices, id: \.self) { index in
                                 TextField("Item text", text: .init(
-                                    get: { appState.blueprintItems[index].text },
-                                    set: { appState.blueprintItems[index].text = $0 }))
+                                    get: { blueprint.items[index].text },
+                                    set: { blueprint.items[index].text = $0 }))
                             }
                             .onDelete(perform: {
-                                appState.blueprintItems.remove(atOffsets: $0)
+                                blueprint.items.remove(atOffsets: $0)
                                 appState.revalidateBlueprint()
                             })
-                            .onMove(perform: { appState.blueprintItems.move(fromOffsets: $0, toOffset: $1) })
+                            .onMove(perform: { blueprint.items.move(fromOffsets: $0, toOffset: $1) })
                             
                             if appState.isAddingBlueprintItem {
                                 TextField(
@@ -498,7 +495,7 @@ extension BlueprintView: View {
                                             appState.isAddingBlueprintItem = false
                                             isAddItemFocused = false
                                         } else {
-                                            appState.blueprintItems.append(
+                                            blueprint.items.append(
                                                 .init(text: appState.addingBlueprintItemText))
                                             appState.addingBlueprintItemText = ""
                                             isAddItemFocused = true
