@@ -347,11 +347,12 @@ extension TaskView: View {
                         Section {
                             ForEach($task.dueItems) { $item in
                                 HStack {
-                                    Text(item.text)
+                                    TextField("Item text", text: $item.text)
                                     Spacer()
-                                    Image(systemName: "circle")
+                                    Button.init(action: { item.checked.toggle()}) {
+                                        Image(systemName: "circle")
+                                    }
                                 }
-                                .onTapGesture { item.checked.toggle() }
                             }
                             
                             if appState.isAddingTaskDueItem {
@@ -395,11 +396,12 @@ extension TaskView: View {
                         Section {
                             ForEach($task.completedItems) { $item in
                                 HStack {
-                                    Text(item.text) // TODO editable
+                                    TextField("Item text", text: $item.text)
                                     Spacer()
-                                    Image(systemName: "checkmark.circle.fill")
+                                    Button.init(action: { item.checked.toggle()}) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                    }
                                 }
-                                .onTapGesture { item.checked.toggle() }
                             }
                         } header: {
                             Text("Completed")
