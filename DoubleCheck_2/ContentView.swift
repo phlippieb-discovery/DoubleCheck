@@ -63,57 +63,86 @@ struct ContentView_Previews: PreviewProvider {
 final class AppState: ObservableObject {
     // MARK: Home state
     
+    enum Route {
+        case viewTask(id: UUID)
+        case createBlueprint
+        case viewBlueprint(id: UUID)
+    }
+    
+    @Published var route: Route?
+    
+    var isRouting: Bool {
+        get { self.route != nil }
+        set {
+            if !newValue {
+                self.route = nil
+            }
+        }
+    }
+    
     // TODO - only show "active" tasks (that were recently created or interacted with); show "view archived tasks" button and have a list of all tasks
     @Published var tasks: [TaskList] = []
     @Published var blueprints: [BlueprintList] = []
     @Published var creatingBlueprint: BlueprintList?
     
+    func startTask(from blueprint: BlueprintList) {
+        let newTask = TaskList(
+            name: blueprint.name + " 5 Jan", // TODO correct date; also deduplicate names with (1) if needed
+            items: blueprint.items.map { .init(text: $0.text) })
+        self.tasks.append(newTask)
+        self.route = .viewTask(id: newTask.id)
+    }
+    
     func createBlueprintTapped() {
         self.creatingBlueprint = .init(name: "", items: [])
-        self.viewingBlueprintId = self.creatingBlueprint?.id
+        self.route = .createBlueprint
+    }
+    
+    func viewBlueprintTapped(id: UUID) {
+        self.route = .viewTask(id: id)
     }
     
     // MARK: task view state
     
+    /// A bindable view the task being viewed,
+    /// which binds to the correct element of the `tasks` array.
     var viewingTask: TaskList? {
         get {
-            guard let id = self.viewingTaskId else { return nil }
+            guard case .viewTask(let id) = self.route else { return nil }
             return self.tasks[id]
         } set {
-            self.viewingTaskId = newValue?.id
+            guard case .viewTask(let id) = self.route,
+                  newValue?.id == id
+            else { return }
             self.tasks.update(with: newValue)
         }
     }
-    private var viewingTaskId: UUID?
+    
     @Published var isAddingTaskDueItem = false
     @Published var isAddingTaskCompletedItem = false
     @Published var addingTaskItemText = ""
     
-    func clearTaskState() {
-        viewingTask = nil
-        isAddingTaskDueItem = false
-        isAddingTaskCompletedItem = false
-        addingTaskItemText = ""
-    }
-    
     // MARK: create/edit blueprint view state
     
+    /// A bindable view of the blueprint being viewed, either for the create or view screen,
+    /// which binds to either the scratch `creatingBlueprint` value,
+    /// or the correct element in the `blueprints` array.
     var viewingBlueprint: BlueprintList? {
         get {
-            guard let id = self.viewingBlueprintId else { return nil }
-            return self.blueprints[id] ?? self.creatingBlueprint
+            switch self.route {
+            case .createBlueprint: return self.creatingBlueprint
+            case .viewBlueprint(let id): return self.blueprints[id]
+            default: return nil
+            }
         } set {
-            self.viewingBlueprintId = newValue?.id
-            
-            if let id = newValue?.id,
-               self.creatingBlueprint?.id == id {
-                self.creatingBlueprint = newValue
-            } else {
-                self.blueprints.update(with: newValue)
+            switch self.route {
+            case .createBlueprint: self.creatingBlueprint = newValue
+            case .viewBlueprint(let id) where newValue?.id == id: self.blueprints.update(with: newValue)
+            default: break
             }
         }
     }
-    private var viewingBlueprintId: UUID?
+    
     @Published var isAddingBlueprintItem = false
     @Published var addingBlueprintItemText = ""
     @Published var isBlueprintValid = false
@@ -121,13 +150,6 @@ final class AppState: ObservableObject {
     func revalidateBlueprint() {
         guard let blueprint = viewingBlueprint else { return }
         isBlueprintValid = !blueprint.name.isEmpty && !blueprint.items.isEmpty
-    }
-    
-    func clearBlueprintState() {
-        viewingBlueprint = nil
-        creatingBlueprint = nil
-        isAddingBlueprintItem = false
-        addingBlueprintItemText = ""
     }
 }
 
@@ -213,7 +235,7 @@ extension HomeView: View {
                                 Text(list.name)
                             }
                             .onTapGesture {
-                                appState.viewingTask = list
+                                appState.route = .viewTask(id: list.id)
                             }
                         }
                     }
@@ -221,11 +243,15 @@ extension HomeView: View {
                     HStack {
                         Text("Tasks").font(.title2)
                         Spacer()
-                        Button {
-                            // Action:
-                            // TODO - options for
-                            // (a) each blueprint
-                            // (b) completely new task with no items, for once-offs
+                        Menu.init {
+                            Button("New empty task") {
+                                appState.startTask(from: .init(name: "", items: []))
+                            }
+                            ForEach(appState.blueprints) { blueprint in
+                                Button(blueprint.name) {
+                                    appState.startTask(from: blueprint)
+                                }
+                            }
                         } label: {
                             HStack {
                                 Text("Start")
@@ -253,7 +279,7 @@ extension HomeView: View {
                                 Text(list.name)
                             }
                             .onTapGesture {
-                                appState.viewingBlueprint = list
+                                appState.route = .viewBlueprint(id: list.id)
                             }
                         }
                     }
@@ -284,23 +310,35 @@ extension HomeView: View {
         //            label: { Image(systemName: "gearshape") })
         //            .buttonStyle(.plain))
         
+        .sheet(
+            isPresented: $appState.isRouting,
+            onDismiss: {},
+            content: {
+                switch appState.route {
+                case .viewTask: TaskView(appState: appState)
+                case .createBlueprint: CreateBlueprintView(appState: appState)
+                case .viewBlueprint: ViewBlueprintView(appState: appState)
+                case .none: EmptyView()
+                }
+            })
+        
         // View a task:
-        .sheet(
-            item: $appState.viewingTask,
-            onDismiss: { appState.clearTaskState() },
-            content: { _ in TaskView(appState: appState) })
-        
-        // Create new blueprint:
-        .sheet(
-            item: $appState.creatingBlueprint,
-            onDismiss: { appState.clearBlueprintState() },
-            content: { _ in CreateBlueprintView(appState: appState) })
-        
-        // View existing blueprint:
-        .sheet(
-            item: $appState.viewingBlueprint,
-            onDismiss: { appState.clearBlueprintState() },
-            content: { _ in ViewBlueprintView(appState: appState) })
+//        .sheet(
+//            item: $appState.viewingTask,
+//            onDismiss: { appState.clearTaskState() },
+//            content: { _ in TaskView(appState: appState) })
+//
+//        // Create new blueprint:
+//        .sheet(
+//            item: $appState.creatingBlueprint,
+//            onDismiss: { appState.clearBlueprintState() },
+//            content: { _ in CreateBlueprintView(appState: appState) })
+//
+//        // View existing blueprint:
+//        .sheet(
+//            item: $appState.viewingBlueprint,
+//            onDismiss: { appState.clearBlueprintState() },
+//            content: { _ in ViewBlueprintView(appState: appState) })
     }
 }
 
@@ -428,9 +466,7 @@ struct CreateBlueprintView: View {
                     .navigationBarItems(
                         trailing: Button("Save") {
                             appState.blueprints.append(blueprint)
-                            appState.clearBlueprintState()
-                            // View the blueprint immediately:
-                            appState.viewingBlueprint = blueprint
+                            appState.route = .viewBlueprint(id: blueprint.id)
                         }.disabled(!appState.isBlueprintValid))
             }
         }
@@ -447,7 +483,7 @@ struct ViewBlueprintView: View {
                 .navigationTitle("Blueprint")
                 .navigationBarTitleDisplayMode(.inline)
                 .navigationBarItems(trailing: Button("Start task") {
-                    // TODO
+                    appState.startTask(from: appState.viewingBlueprint ?? .init(name: "", items: []))
                 })
         }
     }
