@@ -35,6 +35,7 @@ final class AppState: ObservableObject {
     
     enum Route {
         case viewTask(id: UUID)
+        case viewAllTasks
         case createBlueprint
         case viewBlueprint(id: UUID)
     }
@@ -215,7 +216,7 @@ extension AppState {
 }
 
 
-// MARK: - Home screen -
+// MARK: - Home screens -
 
 
 struct HomeView {
@@ -269,8 +270,8 @@ extension HomeView: View {
                     VStack(alignment: .leading) {
                         Text("Tasks are once-off checklists. Use these when you go shopping or pack for a trip.")
                         if appState.hasArchivedTasks {
-                            Button("View all tasks") {
-                                // TODO
+                            NavigationLink("View all tasks") {
+                                AllTasksView(appState: appState)
                             }.padding(1)
                         }
                     }
@@ -316,12 +317,42 @@ extension HomeView: View {
         .navigationTitle("Double Check")
         .navigationBarTitleDisplayMode(.inline)
         
-        // Settings button
-        // TODO this changes the list style!
-        //        .navigationBarItems(leading: Button(
-        //            action: {}, // TODO
-        //            label: { Image(systemName: "gearshape") })
-        //            .buttonStyle(.plain))
+        .sheet(
+            isPresented: $appState.isRouting,
+            onDismiss: {},
+            content: {
+                switch appState.route {
+                case .viewTask: TaskView(appState: appState)
+                case .createBlueprint: CreateBlueprintView(appState: appState)
+                case .viewBlueprint: ViewBlueprintView(appState: appState)
+                case .viewAllTasks, .none: EmptyView() // N/A
+                }
+            })
+    }
+}
+
+// MARK: - All tasks list screen -
+
+
+struct AllTasksView {
+    @ObservedObject var appState: AppState
+}
+
+extension AllTasksView: View {
+    var body: some View {
+        List(appState.tasks.sorted(by: { $0.lastUpdated > $1.lastUpdated })) { list in
+            HStack {
+                Image(systemName: "checklist")
+                    .foregroundColor(.yellow)
+                Text(list.name)
+            }
+            .onTapGesture {
+                appState.route = .viewTask(id: list.id)
+            }
+        }
+        
+        .navigationTitle("All tasks")
+        .navigationBarTitleDisplayMode(.inline)
         
         .sheet(
             isPresented: $appState.isRouting,
@@ -331,27 +362,9 @@ extension HomeView: View {
                 case .viewTask: TaskView(appState: appState)
                 case .createBlueprint: CreateBlueprintView(appState: appState)
                 case .viewBlueprint: ViewBlueprintView(appState: appState)
-                case .none: EmptyView()
+                case .viewAllTasks, .none: EmptyView() // N/A
                 }
             })
-        
-        // View a task:
-//        .sheet(
-//            item: $appState.viewingTask,
-//            onDismiss: { appState.clearTaskState() },
-//            content: { _ in TaskView(appState: appState) })
-//
-//        // Create new blueprint:
-//        .sheet(
-//            item: $appState.creatingBlueprint,
-//            onDismiss: { appState.clearBlueprintState() },
-//            content: { _ in CreateBlueprintView(appState: appState) })
-//
-//        // View existing blueprint:
-//        .sheet(
-//            item: $appState.viewingBlueprint,
-//            onDismiss: { appState.clearBlueprintState() },
-//            content: { _ in ViewBlueprintView(appState: appState) })
     }
 }
 
