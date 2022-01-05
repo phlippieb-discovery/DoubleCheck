@@ -32,7 +32,7 @@ struct ContentView_Previews: PreviewProvider {
     
     private static var appState: AppState = {
         let appState = AppState()
-                appState.activeTasks = [
+                appState.tasks = [
                     .init(
                         name: "Shopping 3 Jan",
                         items: [
@@ -68,10 +68,36 @@ struct ContentView_Previews: PreviewProvider {
 final class AppState: ObservableObject {
     // MARK: Home state
     
-    /// Task lists for "currently active" tasks (that were recently started or used)
-    @Published var activeTasks: [TaskListInfo] = []
-    @Published var hasOlderTasks = true
-    @Published var blueprints: [BlueprintListInfo] = []
+    @Published var tasks: [TaskList] = []
+    @Published var blueprints: [BlueprintList] = []
+    // TODO - only show "active" tasks (that were recently created or interacted with); show "view archived tasks" button and have a list of all tasks
+    
+    // MARK: task view state
+    
+    var viewingTask: TaskList? {
+        get {
+            guard let id = self.viewingTaskId else { return nil }
+            return self.tasks.first(where: { $0.id == id })
+        } set {
+            self.viewingTaskId = newValue?.id
+
+            if let updated = newValue,
+               let index = self.tasks.firstIndex(where: { $0.id == updated.id }) {
+                self.tasks[index] = updated
+            }
+        }
+    }
+    private var viewingTaskId: UUID?
+    @Published var isAddingTaskDueItem = false
+    @Published var isAddingTaskCompletedItem = false
+    @Published var addingTaskItemText = ""
+    
+    func clearTaskState() {
+        viewingTask = nil
+        isAddingTaskDueItem = false
+        isAddingTaskCompletedItem = false
+        addingTaskItemText = ""
+    }
     
     // MARK: create/edit blueprint view state
     
@@ -91,40 +117,32 @@ final class AppState: ObservableObject {
         isAddingBlueprintItem = false
         addingBlueprintItemText = ""
     }
-    
-    // MARK: task view state
-    
-    @Published var taskName = ""
-    @Published var taskItems: [TaskItem] = []
-    var taskDueItems: [TaskItem] { taskItems.filter { !$0.checked }}
-    var taskCompletedItems: [TaskItem] { taskItems.filter { $0.checked }}
-    @Published var isAddingTaskDueItem = false
-    @Published var isAddingTaskCompletedItem = false
-    @Published var addingTaskItemText = ""
-    
-    func clearTaskState() {
-        taskName = ""
-        taskItems = []
-        isAddingTaskDueItem = false
-        isAddingTaskCompletedItem = false
-        addingTaskItemText = ""
-    }
-    
-    func toggleTaskItem(id: UUID) {
-        guard let index = taskItems.firstIndex(where: { $0.id == id }) else { return }
-        var item = taskItems[index]
-        item.checked.toggle()
-        taskItems[index] = item
-    }
 }
 
-struct TaskListInfo: Identifiable {
+struct TaskList: Identifiable {
     let id = UUID()
     var name: String
     var items: [TaskItem]
+    
+    // Convenience:
+    var dueItems: [TaskItem] { items.filter { !$0.checked }}
+    var completedItems: [TaskItem] { items.filter { $0.checked }}
+    
+    mutating func toggleItem(id: UUID) {
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        var item = items[index]
+        item.checked.toggle()
+        items[index] = item
+    }
 }
 
-struct BlueprintListInfo: Identifiable {
+struct TaskItem: Identifiable {
+    let id = UUID()
+    var text: String
+    var checked: Bool = false
+}
+
+struct BlueprintList: Identifiable {
     let id = UUID()
     var name: String
     var items: [BlueprintItem]
@@ -135,10 +153,19 @@ struct BlueprintItem: Identifiable {
     var text: String
 }
 
-struct TaskItem: Identifiable {
-    let id = UUID()
-    var text: String
-    var checked: Bool = false
+extension AppState {
+    static let demo: AppState = {
+        let result = AppState()
+        
+        result.tasks = [
+            .init(name: "Groceries", items: [
+                .init(text: "Milk"),
+                .init(text: "Bread"),
+            ])
+        ]
+        
+        return result
+    }()
 }
 
 
@@ -147,9 +174,8 @@ struct TaskItem: Identifiable {
 
 struct HomeView {
     @ObservedObject var appState: AppState
-    @State private var viewingTask: TaskListInfo? = nil
     @State private var isAddingBlueprint = false
-    @State private var viewingBlueprint: BlueprintListInfo? = nil
+    @State private var viewingBlueprint: BlueprintList? = nil
 }
 
 extension HomeView: View {
@@ -158,22 +184,20 @@ extension HomeView: View {
             // "Tasks" section
             Section(
                 content: {
-                    if appState.activeTasks.isEmpty {
+                    if appState.tasks.isEmpty {
                         Text("No tasks are currently active")
                             .font(.footnote)
                             .italic()
                             .opacity(0.5)
                     } else {
-                        ForEach(appState.activeTasks) { list in
+                        ForEach(appState.tasks) { list in
                             HStack {
                                 Image(systemName: "checklist")
                                     .foregroundColor(.yellow)
                                 Text(list.name)
                             }
                             .onTapGesture {
-                                appState.taskName = list.name
-                                appState.taskItems = list.items
-                                viewingTask = list
+                                appState.viewingTask = list
                             }
                         }
                     }
@@ -192,15 +216,7 @@ extension HomeView: View {
                         }
                     }
                 }, footer: {
-                    if appState.hasOlderTasks {
-                        VStack(alignment: .leading) {
-                            Text("Tasks are once-off checklists. Use these when you go shopping or pack for a trip.")
-                            Button("View all tasks") {
-                                // TODO - action
-                            }
-                            .padding(1)
-                        }
-                    }
+                    Text("Tasks are once-off checklists. Use these when you go shopping or pack for a trip.")
                 })
             
             // "Blueprints" section
@@ -259,7 +275,7 @@ extension HomeView: View {
         
         // View a task:
         .sheet(
-            item: $viewingTask,
+            item: $appState.viewingTask,
             onDismiss: { appState.clearTaskState() },
             content: { _ in TaskView(appState: appState) })
         
@@ -295,128 +311,94 @@ struct TaskView {
 extension TaskView: View {
     var body: some View {
         NavigationView {
-            Form {
-                TextField.init("Task name", text: $appState.taskName)
-                    .font(.title)
-                    .focused($focusItem, equals: .taskName)
-                // TODO save to original list as well (in home/tasks)
-                
-                List {
-                    // Due items
-                    Section {
-                        ForEach(appState.taskDueItems.map(\.id), id: \.self) { id in
-                            let item = appState.taskItems.first(where: { $0.id == id })!
-                            HStack {
-                                // TODO
-//                                TextField("Item text", text: item.text)
-                                Text(item.text)
-                                Spacer()
-                                Image(systemName: "circle")
-                            }
-                            .onTapGesture {
-                                appState.toggleTaskItem(id: id)
-                            }
-                        }
-                        
-                        if appState.isAddingTaskDueItem {
-                            TextField(
-                                "Item text",
-                                text: $appState.addingTaskItemText,
-                                onCommit: {
-                                    if appState.addingTaskItemText.isEmpty {
-                                        appState.isAddingTaskDueItem = false
-                                        focusItem = nil
-                                    } else {
-                                        appState.taskItems.append(
-                                            .init(text: appState.addingTaskItemText))
-                                        appState.addingTaskItemText = ""
-                                        focusItem = .addDueItem
-                                    }
-                                })
-                                .focused($focusItem, equals: .addDueItem)
-                        } else {
-                            Button {
-                                appState.isAddingTaskDueItem = true
-                                appState.isAddingTaskCompletedItem = false
-                                focusItem = .addDueItem
-                            } label: {
+            IfLet($appState.viewingTask) { $task in
+                Form {
+                    TextField.init("Task name", text: $task.name)
+                        .font(.title)
+                        .focused($focusItem, equals: .taskName)
+                    
+                    List {
+                        // Due items
+                        Section {
+                            ForEach(task.dueItems.map(\.id), id: \.self) { id in
+                                let item = task.items.first(where: { $0.id == id })!
                                 HStack {
-                                    Image(systemName: "plus.circle")
-                                    Text("Add items")
+                                    // TODO
+    //                                TextField("Item text", text: item.text)
+                                    Text(item.text)
+                                    Spacer()
+                                    Image(systemName: "circle")
+                                }
+                                .onTapGesture { task.toggleItem(id: id) }
+                            }
+                            
+                            if appState.isAddingTaskDueItem {
+                                TextField(
+                                    "Item text",
+                                    text: $appState.addingTaskItemText,
+                                    onCommit: {
+                                        if appState.addingTaskItemText.isEmpty {
+                                            appState.isAddingTaskDueItem = false
+                                            focusItem = nil
+                                        } else {
+                                            task.items.append(
+                                                .init(text: appState.addingTaskItemText))
+                                            appState.addingTaskItemText = ""
+                                            focusItem = .addDueItem
+                                        }
+                                    })
+                                    .focused($focusItem, equals: .addDueItem)
+                            } else {
+                                Button {
+                                    appState.isAddingTaskDueItem = true
+                                    appState.isAddingTaskCompletedItem = false
+                                    focusItem = .addDueItem
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "plus.circle")
+                                        Text("Add items")
+                                    }
                                 }
                             }
+                            
+                        } header: {
+                            Text("Due")
+                        } footer: {
+                            Text("Tap an item to mark it as completed.")
                         }
-                        
-                    } header: {
-                        HStack {
-                            if appState.taskDueItems.count == 0 {
-                                Text("Due")
-                            } else {
-                                // TODO nicer UX that makes you feel good here?
-                                Text("Due (\(appState.taskDueItems.count) of \(appState.taskItems.count))")
+                    }
+                    
+                    // Completed items
+                    // TODO idea - make it so you have to scroll down to "snap" to the completed section?
+                    if !task.completedItems.isEmpty {
+                        Section {
+                            ForEach(task.completedItems.map(\.id), id: \.self) { id in
+                                let item = task.items.first(where: { $0.id == id })!
+                                HStack {
+                                    Text(item.text) // TODO editable
+                                    Spacer()
+                                    Image(systemName: "checkmark.circle.fill")
+                                }
+                                .onTapGesture { task.toggleItem(id: id) }
                             }
-                            Spacer()
-                            // TODO add "edit"?
+                        } header: {
+                            Text("Completed")
+                        } footer: {
+                            Text("Tap an item to mark it as due.")
                         }
-                    } footer: {
-                        Text("Tap an item to mark it as completed.")
                     }
                 }
-                
-                // Completed items
-                // TODO idea - make it so you have to scroll down to "snap" to the completed section?
-                if !appState.taskCompletedItems.isEmpty {
-                    Section {
-                        ForEach(appState.taskCompletedItems.map(\.id), id: \.self) { id in
-                            let item = appState.taskItems.first(where: { $0.id == id })!
-                            HStack {
-                                Text(item.text) // TODO editable
-                                Spacer()
-                                Image(systemName: "checkmark.circle.fill")
-                            }
-                            .onTapGesture {
-                                appState.toggleTaskItem(id: id)
-                            }
-                        }
-                    } header: {
-                        HStack {
-                            Text("Completed (\(appState.taskCompletedItems.count) of \(appState.taskItems.count))")
-                            Spacer()
-                            // TODO add "edit"?
-                        }
-                    } footer: {
-                        Text("Tap an item to mark it as due.")
-                    }
-                }
+                .navigationTitle("Task")
+                .navigationBarTitleDisplayMode(.inline)
+                // Options button
+                .navigationBarItems(trailing: Menu.init(content: {
+                    // TODO add and implement all actions
+                    Button.init("Delete", role: .destructive) {}
+                    
+                }, label: {
+                    Image(systemName: "ellipsis.circle")
+                }))
             }
-            .navigationTitle("Task")
-            .navigationBarTitleDisplayMode(.inline)
-            // Options button
-            .navigationBarItems(trailing: Menu.init(content: {
-                // TODO implement all actions
-                
-                // Check/uncheck all (uncheck only when all are checked)
-                if !appState.taskItems.isEmpty {
-                    if !appState.taskDueItems.isEmpty {
-                        Button("Check all items") {}
-                    } else {
-                        Button("Uncheck all items") {}
-                    }
-                }
-                
-                Menu("Duplicate task") {
-                    Button("Copy all items") {}
-                    Button("Copy due items") {}
-                }
-                
-                Button("Archive") {}
-                
-                Button.init("Delete", role: .destructive) {}
-                
-            }, label: {
-                Image(systemName: "ellipsis.circle")
-            }))
-            
         }
     }
 }
@@ -529,6 +511,31 @@ extension BlueprintView: View {
                         }
                     })
             }
+        }
+    }
+}
+
+
+// MARK: - SwiftUI helpers -
+
+
+struct IfLet<Value, Content>: View where Content: View {
+    init(
+        _ binding: Binding<Value?>,
+        @ViewBuilder content: @escaping (Binding<Value>) -> Content
+    ) {
+        self.binding = binding
+        self.content = content
+    }
+    
+    let binding: Binding<Value?>
+    let content: (Binding<Value>) -> Content
+    
+    var body: some View {
+        if let value = self.binding.wrappedValue {
+            content(.init(
+                get: { value },
+                set: { self.binding.wrappedValue = $0 }))
         }
     }
 }

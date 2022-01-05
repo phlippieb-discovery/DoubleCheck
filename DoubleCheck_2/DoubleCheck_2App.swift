@@ -15,19 +15,3 @@ struct DoubleCheck_2App: App {
         }
     }
 }
-
-extension AppState {
-    static var demo: AppState = {
-        var result = AppState()
-        
-        result.activeTasks = [
-            .init(
-                name: "Shopping trip",
-                items: [
-                    .init(text: "Milk")
-                ])
-        ]
-        
-        return result
-    }()
-}
