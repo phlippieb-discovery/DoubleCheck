@@ -19,9 +19,9 @@ struct ContentView: View {
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-//        NavigationView {
-//            BlueprintView(appState: appState)
-//        }
+        //        NavigationView {
+        //            BlueprintView(appState: appState)
+        //        }
         TaskView(appState: appState)
         
         ContentView(appState: appState)
@@ -32,31 +32,31 @@ struct ContentView_Previews: PreviewProvider {
     
     private static var appState: AppState = {
         let appState = AppState()
-                appState.tasks = [
-                    .init(
-                        name: "Shopping 3 Jan",
-                        items: [
-                            .init(text: "Milk"),
-                            .init(text: "Bread"),
-                            .init(text: "Eggs"),
-                        ]
-                    )
+        appState.tasks = [
+            .init(
+                name: "Shopping 3 Jan",
+                items: [
+                    .init(text: "Milk"),
+                    .init(text: "Bread"),
+                    .init(text: "Eggs"),
                 ]
-                appState.blueprints = [
-                    .init(
-                        name: "Groceries",
-                        items: [
-                            .init(text: "Milk"),
-                            .init(text: "Bread"),
-                            .init(text: "Eggs"),
-                        ]
-                    ),
-                    .init(
-                        name: "Short trip",
-                        items: [
-                            .init(text: "Shirts")
-                        ])
+            )
+        ]
+        appState.blueprints = [
+            .init(
+                name: "Groceries",
+                items: [
+                    .init(text: "Milk"),
+                    .init(text: "Bread"),
+                    .init(text: "Eggs"),
                 ]
+            ),
+            .init(
+                name: "Short trip",
+                items: [
+                    .init(text: "Shirts")
+                ])
+        ]
         return appState
     }()
 }
@@ -80,7 +80,6 @@ final class AppState: ObservableObject {
             return self.tasks.first(where: { $0.id == id })
         } set {
             self.viewingTaskId = newValue?.id
-
             if let updated = newValue,
                let index = self.tasks.firstIndex(where: { $0.id == updated.id }) {
                 self.tasks[index] = updated
@@ -101,18 +100,31 @@ final class AppState: ObservableObject {
     
     // MARK: create/edit blueprint view state
     
-    @Published var blueprintName = ""
+    var viewingBlueprint: BlueprintList? {
+        get {
+            guard let id = self.viewingBlueprintId else { return nil }
+            return self.blueprints.first(where: { $0.id == id })
+        } set {
+            self.viewingBlueprintId = newValue?.id
+            if let updated = newValue,
+               let index = self.blueprints.firstIndex(where: { $0.id == updated.id }) {
+                self.blueprints[index] = updated
+            }
+        }
+    }
+    private var viewingBlueprintId: UUID?
     @Published var blueprintItems: [BlueprintItem] = []
     @Published var isAddingBlueprintItem = false
     @Published var addingBlueprintItemText = ""
     @Published var isBlueprintValid = false
     
     func revalidateBlueprint() {
-        isBlueprintValid = !blueprintName.isEmpty && !blueprintItems.isEmpty
+        guard let blueprint = viewingBlueprint else { return }
+        isBlueprintValid = !blueprint.name.isEmpty && !blueprint.items.isEmpty
     }
     
     func clearBlueprintState() {
-        blueprintName = ""
+        viewingBlueprint = nil
         blueprintItems = []
         isAddingBlueprintItem = false
         addingBlueprintItemText = ""
@@ -158,6 +170,13 @@ extension AppState {
         let result = AppState()
         
         result.tasks = [
+            .init(name: "Groceries 5 Jan", items: [
+                .init(text: "Milk"),
+                .init(text: "Bread"),
+            ])
+        ]
+        
+        result.blueprints = [
             .init(name: "Groceries", items: [
                 .init(text: "Milk"),
                 .init(text: "Bread"),
@@ -175,7 +194,6 @@ extension AppState {
 struct HomeView {
     @ObservedObject var appState: AppState
     @State private var isAddingBlueprint = false
-    @State private var viewingBlueprint: BlueprintList? = nil
 }
 
 extension HomeView: View {
@@ -235,12 +253,8 @@ extension HomeView: View {
                                 Text(list.name)
                             }
                             .onTapGesture {
-                                withAnimation {
-                                    viewingBlueprint = list
-                                    appState.blueprintName = list.name
-                                    appState.blueprintItems = list.items
-                                    
-                                }
+                                appState.viewingBlueprint = list
+                                appState.blueprintItems = list.items
                             }
                         }
                     }
@@ -287,7 +301,7 @@ extension HomeView: View {
         
         // View existing blueprint:
         .sheet(
-            item: $viewingBlueprint,
+            item: $appState.viewingBlueprint,
             onDismiss: { appState.clearBlueprintState() },
             content: { _ in ViewBlueprintView(appState: appState) })
     }
@@ -324,7 +338,7 @@ extension TaskView: View {
                                 let item = task.items.first(where: { $0.id == id })!
                                 HStack {
                                     // TODO
-    //                                TextField("Item text", text: item.text)
+                                    //                                TextField("Item text", text: item.text)
                                     Text(item.text)
                                     Spacer()
                                     Image(systemName: "circle")
@@ -420,7 +434,7 @@ struct CreateBlueprintView: View {
                 .navigationBarItems(
                     trailing: Button("Save") {
                         appState.blueprints.append(.init(
-                            name: appState.blueprintName,
+                            name: appState.viewingBlueprint?.name ?? "",
                             items: appState.blueprintItems))
                         dismiss()
                     }.disabled(!appState.isBlueprintValid)
@@ -453,63 +467,65 @@ struct BlueprintView {
 
 extension BlueprintView: View {
     var body: some View {
-        Form {
-            TextField.init("List name", text: $appState.blueprintName)
-                .font(.title)
-                .onChange(of: appState.blueprintName) { _ in
-                    appState.revalidateBlueprint()
-                }
-            
-            List {
-                Section.init(
-                    content: {
-                        ForEach(appState.blueprintItems.indices, id: \.self) { index in
-                            TextField("Item text", text: .init(
-                                get: { appState.blueprintItems[index].text },
-                                set: { appState.blueprintItems[index].text = $0 }))
-                        }
-                        .onDelete(perform: {
-                            appState.blueprintItems.remove(atOffsets: $0)
-                            appState.revalidateBlueprint()
-                        })
-                        .onMove(perform: { appState.blueprintItems.move(fromOffsets: $0, toOffset: $1) })
-                        
-                        if appState.isAddingBlueprintItem {
-                            TextField(
-                                "Item text",
-                                text: $appState.addingBlueprintItemText,
-                                onCommit: {
-                                    if appState.addingBlueprintItemText.isEmpty {
-                                        appState.isAddingBlueprintItem = false
-                                        isAddItemFocused = false
-                                    } else {
-                                        appState.blueprintItems.append(
-                                            .init(text: appState.addingBlueprintItemText))
-                                        appState.addingBlueprintItemText = ""
-                                        isAddItemFocused = true
-                                    }
-                                    appState.revalidateBlueprint()
-                                })
-                                .focused($isAddItemFocused, equals: true)
+        IfLet($appState.viewingBlueprint) { $blueprint in
+            Form {
+                TextField.init("List name", text: $blueprint.name)
+                    .font(.title)
+                    .onChange(of: blueprint.name) { _ in
+                        appState.revalidateBlueprint()
+                    }
+                
+                List {
+                    Section.init(
+                        content: {
+                            ForEach(appState.blueprintItems.indices, id: \.self) { index in
+                                TextField("Item text", text: .init(
+                                    get: { appState.blueprintItems[index].text },
+                                    set: { appState.blueprintItems[index].text = $0 }))
+                            }
+                            .onDelete(perform: {
+                                appState.blueprintItems.remove(atOffsets: $0)
+                                appState.revalidateBlueprint()
+                            })
+                            .onMove(perform: { appState.blueprintItems.move(fromOffsets: $0, toOffset: $1) })
                             
-                        } else {
-                            Button {
-                                appState.isAddingBlueprintItem = true
-                                isAddItemFocused = true
-                            } label: {
-                                HStack {
-                                    Image(systemName: "plus.circle")
-                                    Text("Add items")
+                            if appState.isAddingBlueprintItem {
+                                TextField(
+                                    "Item text",
+                                    text: $appState.addingBlueprintItemText,
+                                    onCommit: {
+                                        if appState.addingBlueprintItemText.isEmpty {
+                                            appState.isAddingBlueprintItem = false
+                                            isAddItemFocused = false
+                                        } else {
+                                            appState.blueprintItems.append(
+                                                .init(text: appState.addingBlueprintItemText))
+                                            appState.addingBlueprintItemText = ""
+                                            isAddItemFocused = true
+                                        }
+                                        appState.revalidateBlueprint()
+                                    })
+                                    .focused($isAddItemFocused, equals: true)
+                                
+                            } else {
+                                Button {
+                                    appState.isAddingBlueprintItem = true
+                                    isAddItemFocused = true
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "plus.circle")
+                                        Text("Add items")
+                                    }
                                 }
                             }
-                        }
-                    }, header: {
-                        HStack {
-                            Text("Items")
-                            Spacer()
-                            EditButton() // TODO doesn't work
-                        }
-                    })
+                        }, header: {
+                            HStack {
+                                Text("Items")
+                                Spacer()
+                                EditButton() // TODO doesn't work
+                            }
+                        })
+                }
             }
         }
     }
