@@ -58,7 +58,8 @@ final class AppState: ObservableObject {
     /// Only the 5 most recent tasks that were updated within the last day
     var recentTasks: [TaskList] {
         self.tasks
-            .filter { !$0.isArchived && $0.lastUpdated.timeIntervalSinceNow < 86400 } // 24H
+            .filter { !$0.isArchived && $0.lastUpdated.timeIntervalSinceNow < 86400 } // 24H TODO doesn't seem to work
+        // TODO update lastUpdated when things change!
             .sorted(by: { $0.lastUpdated > $1.lastUpdated })
             .prefix(5)
             .map { $0 }
@@ -75,6 +76,23 @@ final class AppState: ObservableObject {
             items: blueprint.items.map { .init(text: $0.text) })
         self.tasks.append(newTask)
         self.route = .viewTask(id: newTask.id)
+    }
+    
+    func startTask(from task: TaskList, mode: DuplicateTaskMode) {
+        let newItems: [TaskItem]
+        switch mode {
+        case .copyAllItems: newItems = task.items.map { .init(text: $0.text, checked: false) }
+        case .copyDueItemsOnly: newItems = task.items.filter { $0.checked == false }
+        }
+        let newTask = TaskList(
+            name: task.name + " (copy)",
+            items: newItems)
+        self.tasks.append(newTask)
+        self.route = .viewTask(id: newTask.id)
+    }
+    
+    enum DuplicateTaskMode {
+        case copyAllItems, copyDueItemsOnly
     }
     
     func createBlueprintTapped() {
@@ -380,7 +398,7 @@ struct TaskView {
     }
     
     @FocusState private var focusItem: FocusItem?
-    @State private var isOptionsAlertPresented = false
+    @State private var isConfirmDeletePresented = false
 }
 
 extension TaskView: View {
@@ -460,16 +478,47 @@ extension TaskView: View {
                         }
                     }
                 }
+                
                 .navigationTitle("Task")
                 .navigationBarTitleDisplayMode(.inline)
+                
                 // Options button
                 .navigationBarItems(trailing: Menu.init(content: {
-                    // TODO add and implement all actions
-                    Button.init("Delete", role: .destructive) {}
+                    Menu("Duplicate") {
+                        Text("Start a new task, using this task as a basis")
+                        Button("Copy all this task's items") {
+                            appState.startTask(from: task, mode: .copyAllItems)
+                        }
+                        Button("Copy only the due items") {
+                            appState.startTask(from: task, mode: .copyDueItemsOnly)
+                        }
+                    }
+                    Button("Archive") {
+                        task.isArchived = true
+                        appState.route = nil
+                    }
+                    Button("Delete", role: .destructive) {
+                        isConfirmDeletePresented = true
+                    }
                     
                 }, label: {
                     Image(systemName: "ellipsis.circle")
                 }))
+                
+                // Confirm delete
+                .alert("Delete task?", isPresented: $isConfirmDeletePresented, actions: {
+                    Button("Delete", role: .destructive) {
+                        appState.tasks[task.id] = nil
+                        appState.route = nil
+                    }
+                    Button("Archive") {
+                        task.isArchived = true
+                        appState.route = nil
+                    }
+                    Button("Cancel", role: .cancel) {}
+                }, message: {
+                    Text("If you're done with this task, you can archive it to remove it from the active tasks view instead")
+                })
             }
         }
     }
