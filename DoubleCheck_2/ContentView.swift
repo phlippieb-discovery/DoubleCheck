@@ -5,8 +5,6 @@
 //  Created by Phlippie Bosman on 2022/01/04.
 //
 
-// TODO we need much better ergonomics for id-based lists
-
 import SwiftUI
 
 struct ContentView: View {
@@ -74,13 +72,10 @@ final class AppState: ObservableObject {
     var viewingTask: TaskList? {
         get {
             guard let id = self.viewingTaskId else { return nil }
-            return self.tasks.first(where: { $0.id == id })
+            return self.tasks[id]
         } set {
             self.viewingTaskId = newValue?.id
-            if let updated = newValue,
-               let index = self.tasks.firstIndex(where: { $0.id == updated.id }) {
-                self.tasks[index] = updated
-            }
+            self.tasks.update(with: newValue)
         }
     }
     private var viewingTaskId: UUID?
@@ -100,13 +95,10 @@ final class AppState: ObservableObject {
     var viewingBlueprint: BlueprintList? {
         get {
             guard let id = self.viewingBlueprintId else { return nil }
-            return self.blueprints.first(where: { $0.id == id })
+            return self.blueprints[id]
         } set {
             self.viewingBlueprintId = newValue?.id
-            if let updated = newValue,
-               let index = self.blueprints.firstIndex(where: { $0.id == updated.id }) {
-                self.blueprints[index] = updated
-            }
+            self.blueprints.update(with: newValue)
         }
     }
     private var viewingBlueprintId: UUID?
@@ -134,27 +126,11 @@ struct TaskList: Identifiable {
     // Convenience:
     var dueItems: [TaskItem] {
         get { items.filter { !$0.checked }}
-        set {
-            newValue.forEach { newItem in
-                if let index = self.items.firstIndex(where: { $0.id == newItem.id }) {
-                    self.items[index] = newItem
-                } else {
-                    self.items.append(newItem)
-                }
-            }
-        }
+        set { newValue.forEach { items.update(with: $0) }}
     }
     var completedItems: [TaskItem] {
         get { items.filter { $0.checked }}
-        set {
-            newValue.forEach { newItem in
-                if let index = self.items.firstIndex(where: { $0.id == newItem.id }) {
-                    self.items[index] = newItem
-                } else {
-                    self.items.append(newItem)
-                }
-            }
-        }
+        set { newValue.forEach { items.update(with: $0) }}
     }
 }
 
@@ -349,7 +325,7 @@ extension TaskView: View {
                                 HStack {
                                     TextField("Item text", text: $item.text)
                                     Spacer()
-                                    Button.init(action: { item.checked.toggle()}) {
+                                    Button.init(action: { withAnimation { item.checked.toggle() }}) {
                                         Image(systemName: "circle")
                                     }
                                 }
@@ -398,7 +374,7 @@ extension TaskView: View {
                                 HStack {
                                     TextField("Item text", text: $item.text)
                                     Spacer()
-                                    Button.init(action: { item.checked.toggle()}) {
+                                    Button.init(action: { withAnimation { item.checked.toggle() }}) {
                                         Image(systemName: "checkmark.circle.fill")
                                     }
                                 }
@@ -561,5 +537,29 @@ struct IfLet<Value, Content>: View where Content: View {
                 get: { value },
                 set: { self.binding.wrappedValue = $0 }))
         }
+    }
+}
+
+
+// MARK: - Identifiable Array helpers -
+
+
+extension Array where Element: Identifiable {
+    subscript(id: Element.ID) -> Element? {
+        get {
+            return self.first(where: { $0.id == id })
+        } set {
+            switch (firstIndex(where: { $0.id == id }), newValue) {
+            case (.some(let index), .some(let value)): self[index] = value
+            case (.some(let index), .none): self.remove(at: index)
+            case (.none, .some(let value)): self.append(value)
+            case (.none, .none): break
+            }
+        }
+    }
+    
+    mutating func update(with value: Element?) {
+        guard let id = value?.id else { return }
+        self[id] = value
     }
 }
