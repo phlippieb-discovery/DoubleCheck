@@ -11,7 +11,23 @@ import SwiftUI
 struct DoubleCheck_2App: App {
     var body: some Scene {
         WindowGroup {
-            ContentView(appState: .init())
+            ContentView(appState: .demo)
         }
     }
+}
+
+extension AppState {
+    static var demo: AppState = {
+        var result = AppState()
+        
+        result.activeTasks = [
+            .init(
+                name: "Shopping trip",
+                items: [
+                    .init(text: "Milk")
+                ])
+        ]
+        
+        return result
+    }()
 }
