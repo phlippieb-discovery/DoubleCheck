@@ -63,9 +63,15 @@ struct ContentView_Previews: PreviewProvider {
 final class AppState: ObservableObject {
     // MARK: Home state
     
+    // TODO - only show "active" tasks (that were recently created or interacted with); show "view archived tasks" button and have a list of all tasks
     @Published var tasks: [TaskList] = []
     @Published var blueprints: [BlueprintList] = []
-    // TODO - only show "active" tasks (that were recently created or interacted with); show "view archived tasks" button and have a list of all tasks
+    @Published var creatingBlueprint: BlueprintList?
+    
+    func createBlueprintTapped() {
+        self.creatingBlueprint = .init(name: "", items: [])
+        self.viewingBlueprintId = self.creatingBlueprint?.id
+    }
     
     // MARK: task view state
     
@@ -95,10 +101,16 @@ final class AppState: ObservableObject {
     var viewingBlueprint: BlueprintList? {
         get {
             guard let id = self.viewingBlueprintId else { return nil }
-            return self.blueprints[id]
+            return self.blueprints[id] ?? self.creatingBlueprint
         } set {
             self.viewingBlueprintId = newValue?.id
-            self.blueprints.update(with: newValue)
+            
+            if let id = newValue?.id,
+               self.creatingBlueprint?.id == id {
+                self.creatingBlueprint = newValue
+            } else {
+                self.blueprints.update(with: newValue)
+            }
         }
     }
     private var viewingBlueprintId: UUID?
@@ -113,6 +125,7 @@ final class AppState: ObservableObject {
     
     func clearBlueprintState() {
         viewingBlueprint = nil
+        creatingBlueprint = nil
         isAddingBlueprintItem = false
         addingBlueprintItemText = ""
     }
@@ -179,7 +192,6 @@ extension AppState {
 
 struct HomeView {
     @ObservedObject var appState: AppState
-    @State private var isAddingBlueprint = false
 }
 
 extension HomeView: View {
@@ -249,14 +261,12 @@ extension HomeView: View {
                     HStack {
                         Text("Blueprints").font(.title2)
                         Spacer()
-                        Button(action: {
-                            isAddingBlueprint = true
-                        }, label: {
+                        Button(action: appState.createBlueprintTapped) {
                             HStack {
                                 Text("Create")
                                 Image(systemName: "plus.circle.fill")
                             }
-                        })
+                        }
                     }
                 }, footer: {
                     VStack(alignment: .leading) {
@@ -282,9 +292,9 @@ extension HomeView: View {
         
         // Create new blueprint:
         .sheet(
-            isPresented: $isAddingBlueprint,
+            item: $appState.creatingBlueprint,
             onDismiss: { appState.clearBlueprintState() },
-            content: { CreateBlueprintView(appState: appState) })
+            content: { _ in CreateBlueprintView(appState: appState) })
         
         // View existing blueprint:
         .sheet(
@@ -408,7 +418,6 @@ extension TaskView: View {
 /// Popup shell for adding a new blueprint
 struct CreateBlueprintView: View {
     @ObservedObject var appState: AppState
-    @Environment(\.dismiss) var dismiss
     
     var body: some View {
         NavigationView {
@@ -418,9 +427,10 @@ struct CreateBlueprintView: View {
                     .navigationBarTitleDisplayMode(.inline)
                     .navigationBarItems(
                         trailing: Button("Save") {
-                            // TODO might need a scratch var for adding blueprint?
                             appState.blueprints.append(blueprint)
-                            dismiss()
+                            appState.clearBlueprintState()
+                            // View the blueprint immediately:
+                            appState.viewingBlueprint = blueprint
                         }.disabled(!appState.isBlueprintValid))
             }
         }
@@ -430,7 +440,6 @@ struct CreateBlueprintView: View {
 /// View/edit existing blueprint
 struct ViewBlueprintView: View {
     @ObservedObject var appState: AppState
-    @Environment(\.dismiss) var dismiss
     
     var body: some View {
         NavigationView {
