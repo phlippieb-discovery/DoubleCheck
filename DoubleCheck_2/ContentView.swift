@@ -254,14 +254,8 @@ extension HomeView: View {
                             .opacity(0.5)
                     } else {
                         ForEach(appState.recentTasks) { list in
-                            HStack {
-                                Image(systemName: "checklist")
-                                    .foregroundColor(.yellow)
-                                Text(list.name)
-                            }
-                            .onTapGesture {
-                                appState.route = .viewTask(id: list.id)
-                            }
+                            ChecklistRow(list)
+                                .onTapGesture { appState.route = .viewTask(id: list.id) }
                         }
                     }
                 }, header: {
@@ -278,10 +272,7 @@ extension HomeView: View {
                                 }
                             }
                         } label: {
-                            HStack {
-                                Text("Start")
-                                Image(systemName: "plus.circle.fill")
-                            }
+                            ButtonAndIcon("Start", .addCreate) {}
                         }
                     }
                 }, footer: {
@@ -305,31 +296,18 @@ extension HomeView: View {
                             .opacity(0.5)
                     } else {
                         ForEach(appState.blueprints) { list in
-                            HStack {
-                                Image(systemName: "line.3.horizontal")
-                                    .foregroundColor(.blue)
-                                Text(list.name)
-                            }
-                            .onTapGesture {
-                                appState.route = .viewBlueprint(id: list.id)
-                            }
+                            TemplateRow(list)
+                                .onTapGesture { appState.route = .viewBlueprint(id: list.id) }
                         }
                     }
                 }, header: {
                     HStack {
                         Text("Blueprints").font(.title2)
                         Spacer()
-                        Button(action: appState.createBlueprintTapped) {
-                            HStack {
-                                Text("Create")
-                                Image(systemName: "plus.circle.fill")
-                            }
-                        }
+                        ButtonAndIcon("Create", .addCreate, appState.createBlueprintTapped)
                     }
                 }, footer: {
-                    VStack(alignment: .leading) {
-                        Text("Blueprints are reusable templates for task lists. When you start a new task, you can pick a blueprint to base it on; the new task will be pre-filled with the items from the blueprint.")
-                    }
+                    Text("Blueprints are reusable templates for task lists. When you start a new task, you can pick a blueprint to base it on; the new task will be pre-filled with the items from the blueprint.")
                 })
         }
         .navigationTitle("Double Check")
@@ -359,14 +337,8 @@ struct AllTasksView {
 extension AllTasksView: View {
     var body: some View {
         List(appState.tasks.sorted(by: { $0.lastUpdated > $1.lastUpdated })) { list in
-            HStack {
-                Image(systemName: "checklist")
-                    .foregroundColor(.yellow)
-                Text(list.name)
-            }
-            .onTapGesture {
-                appState.route = .viewTask(id: list.id)
-            }
+            ChecklistRow(list)
+                .onTapGesture { appState.route = .viewTask(id: list.id) }
         }
         
         .navigationTitle("All tasks")
@@ -417,9 +389,7 @@ extension TaskView: View {
                                 HStack {
                                     TextField("Item text", text: $item.text)
                                     Spacer()
-                                    Button.init(action: { withAnimation { item.checked.toggle() }}) {
-                                        Image(systemName: "circle")
-                                    }
+                                    ButtonAndIcon("", .dueItem) { withAnimation { item.checked.toggle() }}
                                 }
                             }
                             
@@ -440,15 +410,10 @@ extension TaskView: View {
                                     })
                                     .focused($focusItem, equals: .addDueItem)
                             } else {
-                                Button {
+                                IconAndButton(.addCreate, "Add items") {
                                     appState.isAddingTaskDueItem = true
                                     appState.isAddingTaskCompletedItem = false
                                     focusItem = .addDueItem
-                                } label: {
-                                    HStack {
-                                        Image(systemName: "plus.circle")
-                                        Text("Add items")
-                                    }
                                 }
                             }
                             
@@ -612,21 +577,14 @@ extension BlueprintView: View {
                                     .focused($isAddItemFocused, equals: true)
                                 
                             } else {
-                                Button {
+                                IconAndButton(.addCreate, "Add items") {
                                     appState.isAddingBlueprintItem = true
                                     isAddItemFocused = true
-                                } label: {
-                                    HStack {
-                                        Image(systemName: "plus.circle")
-                                        Text("Add items")
-                                    }
                                 }
                             }
                         }, header: {
                             HStack {
                                 Text("Items")
-                                Spacer()
-                                EditButton() // TODO doesn't work
                             }
                         })
                 }
@@ -657,6 +615,130 @@ struct IfLet<Value, Content>: View where Content: View {
                 get: { value },
                 set: { self.binding.wrappedValue = $0 }))
         }
+    }
+}
+
+
+// MARK: - Reusable SwiftUI components
+
+
+enum ImageIcon: String {
+    case checklist = "checklist"
+    case addCreate = "plus.circle.fill"
+    case template = "line.3.horizontal"
+    case dueItem = "circle"
+    case completedItem = "checkmark.circle.fill"
+    case menu = "ellipsis.circle"
+}
+
+enum RowBackgroundColor {
+    static let checklist = Color.yellow.opacity(0.3)
+    static let archived = Color.gray.opacity(0.1)
+    static let template = Color.blue.opacity(0.2)
+}
+
+struct IconImage: View {
+    init(_ icon: ImageIcon) {
+        self.icon = icon
+    }
+    
+    let icon: ImageIcon
+    
+    var body: some View {
+        Image(systemName: self.icon.rawValue)
+    }
+}
+
+struct IconAndText: View {
+    init(_ icon: ImageIcon, _ text: String) {
+        self.icon = icon
+        self.text = text
+    }
+    
+    let icon: ImageIcon
+    let text: String
+    
+    var body: some View {
+        HStack {
+            IconImage(icon)
+            Text(text)
+        }
+    }
+}
+
+struct ChecklistRow: View {
+    init(_ list: TaskList) {
+        self.list = list
+    }
+    
+    let list: TaskList
+    
+    var body: some View {
+        IconAndText(.checklist, list.name)
+            .listRowBackground(
+                list.isArchived
+                ? RowBackgroundColor.archived
+                : RowBackgroundColor.checklist)
+    }
+}
+
+struct TemplateRow: View {
+    init(_ list: BlueprintList) {
+        self.list = list
+    }
+    
+    let list: BlueprintList
+    
+    var body: some View {
+        IconAndText(.template, list.name)
+            .listRowBackground(RowBackgroundColor.template)
+    }
+}
+
+struct IconAndButton: View {
+    init(_ icon: ImageIcon, _ text: String, _ action: @escaping () -> Void) {
+        self.icon = icon
+        self.text = text
+        self.action = action
+    }
+    
+    let icon: ImageIcon
+    let text: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button {
+            action()
+        } label: {
+            HStack {
+                IconImage(icon)
+                Text(text)
+            }
+        }
+    }
+}
+
+struct ButtonAndIcon: View {
+    init(_ text: String, _ icon: ImageIcon, _ action: @escaping () -> Void) {
+        self.text = text
+        self.icon = icon
+        self.action = action
+    }
+    
+    let text: String
+    let icon: ImageIcon
+    let action: () -> Void
+    
+    var body: some View {
+        Button {
+            action()
+        } label: {
+            HStack {
+                Text(text)
+                IconImage(icon)
+            }
+        }
+
     }
 }
 
