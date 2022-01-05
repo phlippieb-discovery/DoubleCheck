@@ -5,6 +5,8 @@
 //  Created by Phlippie Bosman on 2022/01/04.
 //
 
+// TODO we need much better ergonomics for id-based lists
+
 import SwiftUI
 
 struct ContentView: View {
@@ -19,11 +21,6 @@ struct ContentView: View {
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        //        NavigationView {
-        //            BlueprintView(appState: appState)
-        //        }
-        TaskView(appState: appState)
-        
         ContentView(appState: appState)
         
         ContentView(appState: appState)
@@ -135,14 +132,29 @@ struct TaskList: Identifiable {
     var items: [TaskItem]
     
     // Convenience:
-    var dueItems: [TaskItem] { items.filter { !$0.checked }}
-    var completedItems: [TaskItem] { items.filter { $0.checked }}
-    
-    mutating func toggleItem(id: UUID) {
-        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
-        var item = items[index]
-        item.checked.toggle()
-        items[index] = item
+    var dueItems: [TaskItem] {
+        get { items.filter { !$0.checked }}
+        set {
+            newValue.forEach { newItem in
+                if let index = self.items.firstIndex(where: { $0.id == newItem.id }) {
+                    self.items[index] = newItem
+                } else {
+                    self.items.append(newItem)
+                }
+            }
+        }
+    }
+    var completedItems: [TaskItem] {
+        get { items.filter { $0.checked }}
+        set {
+            newValue.forEach { newItem in
+                if let index = self.items.firstIndex(where: { $0.id == newItem.id }) {
+                    self.items[index] = newItem
+                } else {
+                    self.items.append(newItem)
+                }
+            }
+        }
     }
 }
 
@@ -223,7 +235,9 @@ extension HomeView: View {
                         Spacer()
                         Button {
                             // Action:
-                            // TODO
+                            // TODO - options for
+                            // (a) each blueprint
+                            // (b) completely new task with no items, for once-offs
                         } label: {
                             HStack {
                                 Text("Start")
@@ -331,16 +345,13 @@ extension TaskView: View {
                     List {
                         // Due items
                         Section {
-                            ForEach(task.dueItems.map(\.id), id: \.self) { id in
-                                let item = task.items.first(where: { $0.id == id })!
+                            ForEach($task.dueItems) { $item in
                                 HStack {
-                                    // TODO
-                                    //                                TextField("Item text", text: item.text)
                                     Text(item.text)
                                     Spacer()
                                     Image(systemName: "circle")
                                 }
-                                .onTapGesture { task.toggleItem(id: id) }
+                                .onTapGesture { item.checked.toggle() }
                             }
                             
                             if appState.isAddingTaskDueItem {
@@ -380,17 +391,15 @@ extension TaskView: View {
                     }
                     
                     // Completed items
-                    // TODO idea - make it so you have to scroll down to "snap" to the completed section?
                     if !task.completedItems.isEmpty {
                         Section {
-                            ForEach(task.completedItems.map(\.id), id: \.self) { id in
-                                let item = task.items.first(where: { $0.id == id })!
+                            ForEach($task.completedItems) { $item in
                                 HStack {
                                     Text(item.text) // TODO editable
                                     Spacer()
                                     Image(systemName: "checkmark.circle.fill")
                                 }
-                                .onTapGesture { task.toggleItem(id: id) }
+                                .onTapGesture { item.checked.toggle() }
                             }
                         } header: {
                             Text("Completed")
