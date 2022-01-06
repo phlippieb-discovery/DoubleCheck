@@ -1,10 +1,3 @@
-//
-//  HomeFeature.swift
-//  DoubleCheck_2
-//
-//  Created by Phlippie Bosman on 2022/01/06.
-//
-
 import SwiftUI
 
 struct HomeView {
@@ -14,31 +7,31 @@ struct HomeView {
 extension HomeView: View {
     var body: some View {
         List {
-            // "Tasks" section
+            // "Checklists" section
             Section(
                 content: {
-                    if appState.recentTasks.isEmpty {
-                        Text("No tasks are currently active")
+                    if appState.activeChecklists.isEmpty {
+                        Text("No checklists are currently active")
                             .font(.footnote)
                             .italic()
                             .opacity(0.5)
                     } else {
-                        ForEach(appState.recentTasks) { list in
+                        ForEach(appState.activeChecklists) { list in
                             ChecklistRow(list)
-                                .onTapGesture { appState.route = .viewTask(id: list.id) }
+                                .onTapGesture { appState.route = .viewChecklist(id: list.id) }
                         }
                     }
                 }, header: {
                     HStack {
-                        Text("Tasks").font(.title2)
+                        Text("Checklists").font(.title2)
                         Spacer()
                         Menu.init {
-                            Button("New empty task") {
-                                appState.startTask(from: .init(name: "", items: []))
+                            Button("New empty checklist") {
+                                appState.startChecklist(from: .init(name: "", items: []))
                             }
-                            ForEach(appState.blueprints) { blueprint in
-                                Button(blueprint.name) {
-                                    appState.startTask(from: blueprint)
+                            ForEach(appState.templates) { template in
+                                Button(template.name) {
+                                    appState.startChecklist(from: template)
                                 }
                             }
                         } label: {
@@ -47,37 +40,37 @@ extension HomeView: View {
                     }
                 }, footer: {
                     VStack(alignment: .leading) {
-                        Text("Tasks are once-off checklists. Use these when you go shopping or pack for a trip.")
-                        if appState.hasArchivedTasks {
-                            NavigationLink("View all tasks") {
-                                AllTasksView(appState: appState)
+                        Text("Checklists are lists of items that can be marked as completed. Create a new checklist whenever you start a new task, e.g. when you go shopping or pack for a trip.")
+                        if appState.hasArchivedChecklists {
+                            NavigationLink("View all checklists") {
+                                AllChecklistsView(appState: appState)
                             }.padding(1)
                         }
                     }
                 })
             
-            // "Blueprints" section
+            // "Tempaltes" section
             Section(
                 content: {
-                    if appState.blueprints.isEmpty {
-                        Text("You don't have any blueprints yet")
+                    if appState.templates.isEmpty {
+                        Text("You don't have any templates yet")
                             .font(.footnote)
                             .italic()
                             .opacity(0.5)
                     } else {
-                        ForEach(appState.blueprints) { list in
+                        ForEach(appState.templates) { list in
                             TemplateRow(list)
-                                .onTapGesture { appState.route = .viewBlueprint(id: list.id) }
+                                .onTapGesture { appState.route = .viewTemplate(id: list.id) }
                         }
                     }
                 }, header: {
                     HStack {
-                        Text("Blueprints").font(.title2)
+                        Text("Templates").font(.title2)
                         Spacer()
-                        ButtonAndIcon("Create", .addCreate, appState.createBlueprintTapped)
+                        ButtonAndIcon("Create", .addCreate, appState.createTemplateTapped)
                     }
                 }, footer: {
-                    Text("Blueprints are reusable templates for task lists. When you start a new task, you can pick a blueprint to base it on; the new task will be pre-filled with the items from the blueprint.")
+                    Text("Templates are reusable blueprints for checklists. When you start a new checklist, you can pick a template to base it on; the new checklist will be pre-filled with the items from the template.")
                 })
         }
         .navigationTitle("Double Check")
@@ -88,10 +81,10 @@ extension HomeView: View {
             onDismiss: {},
             content: {
                 switch appState.route {
-                case .viewTask: TaskView(appState: appState)
-                case .createBlueprint: CreateBlueprintView(appState: appState)
-                case .viewBlueprint: ViewBlueprintView(appState: appState)
-                case .viewAllTasks, .none: EmptyView() // N/A
+                case .viewChecklist: ChecklistView(appState: appState)
+                case .createTemplate: CreateTemplateView(appState: appState)
+                case .viewTemplate: ViewTemplateView(appState: appState)
+                case .viewAllChecklists, .none: EmptyView() // N/A
                 }
             })
     }

@@ -1,36 +1,29 @@
-//
-//  TaskFeature.swift
-//  DoubleCheck_2
-//
-//  Created by Phlippie Bosman on 2022/01/06.
-//
-
 import SwiftUI
 
-struct TaskView {
+struct ChecklistView {
     @ObservedObject var appState: AppState
     
     private enum FocusItem {
-        case taskName, addDueItem, addCompletedItem
+        case checklistName, addDueItem, addCompletedItem
     }
     
     @FocusState private var focusItem: FocusItem?
     @State private var isConfirmDeletePresented = false
 }
 
-extension TaskView: View {
+extension ChecklistView: View {
     var body: some View {
         NavigationView {
-            IfLet($appState.viewingTask) { $task in
+            IfLet($appState.viewingChecklist) { $checklist in
                 Form {
-                    TextField.init("Task name", text: $task.name)
+                    TextField.init("Checklist name", text: $checklist.name)
                         .font(.title)
-                        .focused($focusItem, equals: .taskName)
+                        .focused($focusItem, equals: .checklistName)
                     
                     List {
                         // Due items
                         Section {
-                            ForEach($task.dueItems) { $item in
+                            ForEach($checklist.dueItems) { $item in
                                 HStack {
                                     TextField("Item text", text: $item.text)
                                     Spacer()
@@ -38,26 +31,26 @@ extension TaskView: View {
                                 }
                             }
                             
-                            if appState.isAddingTaskDueItem {
+                            if appState.isAddingChecklistDueItem {
                                 TextField(
                                     "Item text",
-                                    text: $appState.addingTaskItemText,
+                                    text: $appState.addingChecklistItemText,
                                     onCommit: {
-                                        if appState.addingTaskItemText.isEmpty {
-                                            appState.isAddingTaskDueItem = false
+                                        if appState.addingChecklistItemText.isEmpty {
+                                            appState.isAddingChecklistDueItem = false
                                             focusItem = nil
                                         } else {
-                                            task.items.append(
-                                                .init(text: appState.addingTaskItemText))
-                                            appState.addingTaskItemText = ""
+                                            checklist.items.append(
+                                                .init(text: appState.addingChecklistItemText))
+                                            appState.addingChecklistItemText = ""
                                             focusItem = .addDueItem
                                         }
                                     })
                                     .focused($focusItem, equals: .addDueItem)
                             } else {
                                 IconAndButton(.addCreate, "Add items") {
-                                    appState.isAddingTaskDueItem = true
-                                    appState.isAddingTaskCompletedItem = false
+                                    appState.isAddingChecklistDueItem = true
+                                    appState.isAddingChecklistCompletedItem = false
                                     focusItem = .addDueItem
                                 }
                             }
@@ -70,9 +63,9 @@ extension TaskView: View {
                     }
                     
                     // Completed items
-                    if !task.completedItems.isEmpty {
+                    if !checklist.completedItems.isEmpty {
                         Section {
-                            ForEach($task.completedItems) { $item in
+                            ForEach($checklist.completedItems) { $item in
                                 HStack {
                                     TextField("Item text", text: $item.text)
                                     Spacer()
@@ -89,22 +82,22 @@ extension TaskView: View {
                     }
                 }
                 
-                .navigationTitle("Task")
+                .navigationTitle("Checklist")
                 .navigationBarTitleDisplayMode(.inline)
                 
                 // Options button
                 .navigationBarItems(trailing: Menu.init(content: {
                     Menu("Duplicate") {
-                        Text("Start a new task, using this task as a basis")
-                        Button("Copy all this task's items") {
-                            appState.startTask(from: task, mode: .copyAllItems)
+                        Text("Start a new checklist, using this one as a basis")
+                        Button("Copy all this checklist's items") {
+                            appState.startChecklist(from: checklist, mode: .copyAllItems)
                         }
                         Button("Copy only the due items") {
-                            appState.startTask(from: task, mode: .copyDueItemsOnly)
+                            appState.startChecklist(from: checklist, mode: .copyDueItemsOnly)
                         }
                     }
                     Button("Archive") {
-                        task.isArchived = true
+                        checklist.isArchived = true
                         appState.route = nil
                     }
                     Button("Delete", role: .destructive) {
@@ -116,18 +109,18 @@ extension TaskView: View {
                 }))
                 
                 // Confirm delete
-                .alert("Delete task?", isPresented: $isConfirmDeletePresented, actions: {
+                .alert("Delete checklist?", isPresented: $isConfirmDeletePresented, actions: {
                     Button("Delete", role: .destructive) {
-                        appState.tasks[task.id] = nil
+                        appState.checkLists[checklist.id] = nil
                         appState.route = nil
                     }
                     Button("Archive") {
-                        task.isArchived = true
+                        checklist.isArchived = true
                         appState.route = nil
                     }
                     Button("Cancel", role: .cancel) {}
                 }, message: {
-                    Text("If you're done with this task, you can archive it to remove it from the active tasks view instead")
+                    Text("If you're done with this checklist, you can archive it to remove it from the active checklists view instead")
                 })
             }
         }

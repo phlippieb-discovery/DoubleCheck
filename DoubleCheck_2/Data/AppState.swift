@@ -1,20 +1,13 @@
-//
-//  AppState.swift
-//  DoubleCheck_2
-//
-//  Created by Phlippie Bosman on 2022/01/06.
-//
-
 import Foundation
 
 final class AppState: ObservableObject {
     // MARK: Home state
     
     enum Route {
-        case viewTask(id: UUID)
-        case viewAllTasks
-        case createBlueprint
-        case viewBlueprint(id: UUID)
+        case viewChecklist(id: UUID)
+        case viewAllChecklists
+        case createTemplate
+        case viewTemplate(id: UUID)
     }
     
     @Published var route: Route?
@@ -28,13 +21,13 @@ final class AppState: ObservableObject {
         }
     }
     
-    @Published var tasks: [TaskList] = []
-    @Published var blueprints: [BlueprintList] = []
-    @Published var creatingBlueprint: BlueprintList?
+    @Published var checkLists: [Checklist] = []
+    @Published var templates: [Template] = []
+    @Published var creatingTemplate: Template?
     
-    /// Only the 5 most recent tasks that were updated within the last day
-    var recentTasks: [TaskList] {
-        self.tasks
+    /// Only the 5 most recent checklists that were updated within the last day
+    var activeChecklists: [Checklist] {
+        self.checkLists
             .filter { !$0.isArchived && $0.lastUpdated.timeIntervalSinceNow < 86400 } // 24H TODO doesn't seem to work
         // TODO update lastUpdated when things change!
             .sorted(by: { $0.lastUpdated > $1.lastUpdated })
@@ -42,127 +35,127 @@ final class AppState: ObservableObject {
             .map { $0 }
     }
     
-    /// True if there are more tasks to be viewed than the current recent tasks.
-    var hasArchivedTasks: Bool {
-        self.recentTasks.count != self.tasks.count
+    /// True if there are more checklists to be viewed than the current recent checklist.
+    var hasArchivedChecklists: Bool {
+        self.activeChecklists.count != self.checkLists.count
     }
     
-    func startTask(from blueprint: BlueprintList) {
-        let newTask = TaskList(
-            name: blueprint.name + " 5 Jan", // TODO correct date; also deduplicate names with (1) if needed
-            items: blueprint.items.map { .init(text: $0.text) })
-        self.tasks.append(newTask)
-        self.route = .viewTask(id: newTask.id)
+    func startChecklist(from template: Template) {
+        let newChecklist = Checklist(
+            name: template.name + " 5 Jan", // TODO correct date; also deduplicate names with (1) if needed
+            items: template.items.map { .init(text: $0.text) })
+        self.checkLists.append(newChecklist)
+        self.route = .viewChecklist(id: newChecklist.id)
     }
     
-    func startTask(from task: TaskList, mode: DuplicateTaskMode) {
-        let newItems: [TaskItem]
+    func startChecklist(from checklist: Checklist, mode: DuplicateChecklistMode) {
+        let newItems: [ChecklistItem]
         switch mode {
-        case .copyAllItems: newItems = task.items.map { .init(text: $0.text, checked: false) }
-        case .copyDueItemsOnly: newItems = task.items.filter { $0.checked == false }
+        case .copyAllItems: newItems = checklist.items.map { .init(text: $0.text, checked: false) }
+        case .copyDueItemsOnly: newItems = checklist.items.filter { $0.checked == false }
         }
-        let newTask = TaskList(
-            name: task.name + " (copy)",
+        let newChecklist = Checklist(
+            name: checklist.name + " (copy)",
             items: newItems)
-        self.tasks.append(newTask)
-        self.route = .viewTask(id: newTask.id)
+        self.checkLists.append(newChecklist)
+        self.route = .viewChecklist(id: newChecklist.id)
     }
     
-    enum DuplicateTaskMode {
+    enum DuplicateChecklistMode {
         case copyAllItems, copyDueItemsOnly
     }
     
-    func createBlueprintTapped() {
-        self.creatingBlueprint = .init(name: "", items: [])
-        self.route = .createBlueprint
+    func createTemplateTapped() {
+        self.creatingTemplate = .init(name: "", items: [])
+        self.route = .createTemplate
     }
     
-    func viewBlueprintTapped(id: UUID) {
-        self.route = .viewTask(id: id)
+    func viewTemplateTapped(id: UUID) {
+        self.route = .viewChecklist(id: id)
     }
     
-    // MARK: task view state
+    // MARK: checklist view state
     
-    /// A bindable view the task being viewed,
-    /// which binds to the correct element of the `tasks` array.
-    var viewingTask: TaskList? {
+    /// A bindable view the checklist being viewed,
+    /// which binds to the correct element of the `checklist` array.
+    var viewingChecklist: Checklist? {
         get {
-            guard case .viewTask(let id) = self.route else { return nil }
-            return self.tasks[id]
+            guard case .viewChecklist(let id) = self.route else { return nil }
+            return self.checkLists[id]
         } set {
-            guard case .viewTask(let id) = self.route,
+            guard case .viewChecklist(let id) = self.route,
                   newValue?.id == id
             else { return }
-            self.tasks.update(with: newValue)
+            self.checkLists.update(with: newValue)
         }
     }
     
-    @Published var isAddingTaskDueItem = false
-    @Published var isAddingTaskCompletedItem = false
-    @Published var addingTaskItemText = ""
+    @Published var isAddingChecklistDueItem = false
+    @Published var isAddingChecklistCompletedItem = false
+    @Published var addingChecklistItemText = ""
     
-    // MARK: create/edit blueprint view state
+    // MARK: create/edit tempalte view state
     
-    /// A bindable view of the blueprint being viewed, either for the create or view screen,
-    /// which binds to either the scratch `creatingBlueprint` value,
-    /// or the correct element in the `blueprints` array.
-    var viewingBlueprint: BlueprintList? {
+    /// A bindable view of the template being viewed, either for the create or view screen,
+    /// which binds to either the scratch `creatingTemplate` value,
+    /// or the correct element in the `templates` array.
+    var viewingTemplate: Template? {
         get {
             switch self.route {
-            case .createBlueprint: return self.creatingBlueprint
-            case .viewBlueprint(let id): return self.blueprints[id]
+            case .createTemplate: return self.creatingTemplate
+            case .viewTemplate(let id): return self.templates[id]
             default: return nil
             }
         } set {
             switch self.route {
-            case .createBlueprint: self.creatingBlueprint = newValue
-            case .viewBlueprint(let id) where newValue?.id == id: self.blueprints.update(with: newValue)
+            case .createTemplate: self.creatingTemplate = newValue
+            case .viewTemplate(let id) where newValue?.id == id: self.templates.update(with: newValue)
             default: break
             }
         }
     }
     
-    @Published var isAddingBlueprintItem = false
-    @Published var addingBlueprintItemText = ""
-    @Published var isBlueprintValid = false
+    @Published var isAddingTemplateItem = false
+    @Published var addingTemplateItemText = ""
+    @Published var isTemplateValid = false
     
-    func revalidateBlueprint() {
-        guard let blueprint = viewingBlueprint else { return }
-        isBlueprintValid = !blueprint.name.isEmpty && !blueprint.items.isEmpty
+    func revalidateTemplate() {
+        guard let template = viewingTemplate else { return }
+        isTemplateValid = !template.name.isEmpty && !template.items.isEmpty
     }
 }
 
-struct TaskList: Identifiable {
+struct Checklist: Identifiable {
     let id = UUID()
     var name: String
-    var items: [TaskItem]
+    var items: [ChecklistItem]
     var lastUpdated = Date()
     var isArchived = false
     
     // Convenience:
-    var dueItems: [TaskItem] {
+    var dueItems: [ChecklistItem] {
         get { items.filter { !$0.checked }}
         set { newValue.forEach { items.update(with: $0) }}
     }
-    var completedItems: [TaskItem] {
+    var completedItems: [ChecklistItem] {
         get { items.filter { $0.checked }}
         set { newValue.forEach { items.update(with: $0) }}
     }
 }
 
-struct TaskItem: Identifiable {
+struct ChecklistItem: Identifiable {
     let id = UUID()
     var text: String
     var checked: Bool = false
 }
 
-struct BlueprintList: Identifiable {
+struct Template: Identifiable {
     let id = UUID()
     var name: String
-    var items: [BlueprintItem]
+    var items: [TemplateItem]
 }
 
-struct BlueprintItem: Identifiable {
+struct TemplateItem: Identifiable {
     let id = UUID()
     var text: String
 }
@@ -171,12 +164,12 @@ extension AppState {
     static let demo: AppState = {
         let result = AppState()
         
-        var olderTask = TaskList(name: "Groceries 2019", items: [
+        var olderChecklist = Checklist(name: "Groceries 2019", items: [
             .init(text: "Milk")
         ])
-        olderTask.lastUpdated = Date().addingTimeInterval(-90000) // more than 24H
-        result.tasks = [
-            olderTask,
+        olderChecklist.lastUpdated = Date().addingTimeInterval(-90000) // more than 24H
+        result.checkLists = [
+            olderChecklist,
             .init(name: "Groceries 2 Jan", items: [
                 .init(text: "Milk"),
                 .init(text: "Bread"),
@@ -195,7 +188,7 @@ extension AppState {
             ])
         ]
         
-        result.blueprints = [
+        result.templates = [
             .init(name: "Groceries", items: [
                 .init(text: "Milk"),
                 .init(text: "Bread"),

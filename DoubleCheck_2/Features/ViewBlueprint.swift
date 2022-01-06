@@ -1,23 +1,16 @@
-//
-//  ViewBlueprint.swift
-//  DoubleCheck_2
-//
-//  Created by Phlippie Bosman on 2022/01/06.
-//
-
 import SwiftUI
 
-/// View/edit existing blueprint
-struct ViewBlueprintView: View {
+/// View/edit existing template
+struct ViewTemplateView: View {
     @ObservedObject var appState: AppState
     
     var body: some View {
         NavigationView {
-            BlueprintView(appState: appState)
-                .navigationTitle("Blueprint")
+            TemplateView(appState: appState)
+                .navigationTitle("Tempalte")
                 .navigationBarTitleDisplayMode(.inline)
-                .navigationBarItems(trailing: Button("Start task") {
-                    appState.startTask(from: appState.viewingBlueprint ?? .init(name: "", items: []))
+                .navigationBarItems(trailing: Button("Start checklist") {
+                    appState.startChecklist(from: appState.viewingTemplate ?? .init(name: "", items: []))
                 })
         }
     }

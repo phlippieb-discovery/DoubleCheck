@@ -1,10 +1,3 @@
-//
-//  SwiftUIHelpers.swift
-//  DoubleCheck_2
-//
-//  Created by Phlippie Bosman on 2022/01/06.
-//
-
 import SwiftUI
 
 struct IfLet<Value, Content>: View where Content: View {
