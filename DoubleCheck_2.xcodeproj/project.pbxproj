@@ -11,6 +11,16 @@
 		0A8A71DE2784523A00D18AC2 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A8A71DD2784523A00D18AC2 /* ContentView.swift */; };
 		0A8A71E02784523C00D18AC2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0A8A71DF2784523C00D18AC2 /* Assets.xcassets */; };
 		0A8A71E32784523C00D18AC2 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0A8A71E22784523C00D18AC2 /* Preview Assets.xcassets */; };
+		0A98B9DA2786D0B400E5E992 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A98B9D92786D0B400E5E992 /* AppState.swift */; };
+		0A98B9DE2786D12100E5E992 /* Home.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A98B9DD2786D12100E5E992 /* Home.swift */; };
+		0A98B9E02786D14000E5E992 /* AllTasks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A98B9DF2786D14000E5E992 /* AllTasks.swift */; };
+		0A98B9E32786D17200E5E992 /* ViewTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A98B9E22786D17200E5E992 /* ViewTask.swift */; };
+		0A98B9E52786D1B700E5E992 /* CreateBlueprint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A98B9E42786D1B700E5E992 /* CreateBlueprint.swift */; };
+		0A98B9E72786D1F100E5E992 /* ViewBlueprint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A98B9E62786D1F100E5E992 /* ViewBlueprint.swift */; };
+		0A98B9E92786D20C00E5E992 /* BlueprintView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A98B9E82786D20C00E5E992 /* BlueprintView.swift */; };
+		0A98B9ED2786D25500E5E992 /* SwiftUIHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A98B9EC2786D25500E5E992 /* SwiftUIHelpers.swift */; };
+		0A98B9EF2786D27600E5E992 /* Design.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A98B9EE2786D27600E5E992 /* Design.swift */; };
+		0A98B9F12786D2A100E5E992 /* IdentifiableArray.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A98B9F02786D2A100E5E992 /* IdentifiableArray.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -19,6 +29,16 @@
 		0A8A71DD2784523A00D18AC2 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		0A8A71DF2784523C00D18AC2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		0A8A71E22784523C00D18AC2 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		0A98B9D92786D0B400E5E992 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		0A98B9DD2786D12100E5E992 /* Home.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Home.swift; sourceTree = "<group>"; };
+		0A98B9DF2786D14000E5E992 /* AllTasks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllTasks.swift; sourceTree = "<group>"; };
+		0A98B9E22786D17200E5E992 /* ViewTask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewTask.swift; sourceTree = "<group>"; };
+		0A98B9E42786D1B700E5E992 /* CreateBlueprint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateBlueprint.swift; sourceTree = "<group>"; };
+		0A98B9E62786D1F100E5E992 /* ViewBlueprint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewBlueprint.swift; sourceTree = "<group>"; };
+		0A98B9E82786D20C00E5E992 /* BlueprintView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlueprintView.swift; sourceTree = "<group>"; };
+		0A98B9EC2786D25500E5E992 /* SwiftUIHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUIHelpers.swift; sourceTree = "<group>"; };
+		0A98B9EE2786D27600E5E992 /* Design.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Design.swift; sourceTree = "<group>"; };
+		0A98B9F02786D2A100E5E992 /* IdentifiableArray.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdentifiableArray.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -51,9 +71,12 @@
 		0A8A71DA2784523A00D18AC2 /* DoubleCheck_2 */ = {
 			isa = PBXGroup;
 			children = (
-				0A8A71DB2784523A00D18AC2 /* DoubleCheck_2App.swift */,
-				0A8A71DD2784523A00D18AC2 /* ContentView.swift */,
 				0A8A71DF2784523C00D18AC2 /* Assets.xcassets */,
+				0A8A71DD2784523A00D18AC2 /* ContentView.swift */,
+				0A98B9EA2786D24300E5E992 /* Data */,
+				0A8A71DB2784523A00D18AC2 /* DoubleCheck_2App.swift */,
+				0A98B9DB2786D10500E5E992 /* Features */,
+				0A98B9EB2786D24C00E5E992 /* Helpers */,
 				0A8A71E12784523C00D18AC2 /* Preview Content */,
 			);
 			path = DoubleCheck_2;
@@ -65,6 +88,37 @@
 				0A8A71E22784523C00D18AC2 /* Preview Assets.xcassets */,
 			);
 			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		0A98B9DB2786D10500E5E992 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				0A98B9DD2786D12100E5E992 /* Home.swift */,
+				0A98B9DF2786D14000E5E992 /* AllTasks.swift */,
+				0A98B9E22786D17200E5E992 /* ViewTask.swift */,
+				0A98B9E42786D1B700E5E992 /* CreateBlueprint.swift */,
+				0A98B9E62786D1F100E5E992 /* ViewBlueprint.swift */,
+				0A98B9E82786D20C00E5E992 /* BlueprintView.swift */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		0A98B9EA2786D24300E5E992 /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				0A98B9D92786D0B400E5E992 /* AppState.swift */,
+			);
+			path = Data;
+			sourceTree = "<group>";
+		};
+		0A98B9EB2786D24C00E5E992 /* Helpers */ = {
+			isa = PBXGroup;
+			children = (
+				0A98B9EC2786D25500E5E992 /* SwiftUIHelpers.swift */,
+				0A98B9EE2786D27600E5E992 /* Design.swift */,
+				0A98B9F02786D2A100E5E992 /* IdentifiableArray.swift */,
+			);
+			path = Helpers;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -137,8 +191,18 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0A98B9DA2786D0B400E5E992 /* AppState.swift in Sources */,
+				0A98B9F12786D2A100E5E992 /* IdentifiableArray.swift in Sources */,
+				0A98B9DE2786D12100E5E992 /* Home.swift in Sources */,
+				0A98B9E02786D14000E5E992 /* AllTasks.swift in Sources */,
+				0A98B9EF2786D27600E5E992 /* Design.swift in Sources */,
+				0A98B9ED2786D25500E5E992 /* SwiftUIHelpers.swift in Sources */,
 				0A8A71DE2784523A00D18AC2 /* ContentView.swift in Sources */,
+				0A98B9E52786D1B700E5E992 /* CreateBlueprint.swift in Sources */,
 				0A8A71DC2784523A00D18AC2 /* DoubleCheck_2App.swift in Sources */,
+				0A98B9E72786D1F100E5E992 /* ViewBlueprint.swift in Sources */,
+				0A98B9E32786D17200E5E992 /* ViewTask.swift in Sources */,
+				0A98B9E92786D20C00E5E992 /* BlueprintView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
